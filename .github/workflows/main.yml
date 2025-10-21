@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        koha-version: [main, stable, oldstable]
+        koha-version: [main, stable]
 
     steps:
       - uses: actions/checkout@v4
@@ -133,10 +133,10 @@ jobs:
         run: npm ci
 
       - name: Get Koha Version Branch Name
-        id: koha-version-oldstable
+        id: koha-version-stable
         uses: "bywatersolutions/github-action-koha-get-version-by-label@master"
         with:
-          version-label: "oldstable"
+          version-label: "stable"
 
       - name: Read package.json
         id: package
@@ -149,7 +149,7 @@ jobs:
         with:
           release-version: ${{ github.ref_name }}
           release-name: ${{ github.event.repository.name }}
-          minimum-version: ${{ steps.koha-version-oldstable.outputs.version-major-minor }}
+          minimum-version: ${{ steps.koha-version-stable.outputs.version-major-minor }}
           plugin-module: ${{ steps.package.outputs.plugin_path }}
 
       - name: Create Release
