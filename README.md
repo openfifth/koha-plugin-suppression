@@ -1,56 +1,73 @@
-# Koha Plugin Auto Release Template
+# Koha Suppression Indexer Plugin
 
-This template provides an automated release process for Koha plugins, based on the Bywater Solutions auto-release workflow.
+This plugin creates an indexed database table for MARC 942$n suppression values, enabling faster report queries without requiring complex ExtractValue operations.
 
 ## Features
 
-- Automated version management
-- GitHub Actions workflow for testing and releasing
-- Automated KPZ file creation
-- Support for multiple Koha versions (main, stable, oldstable)
-- Automated GitHub releases
+- **Indexed Suppression Table**: Creates `plugin_suppression_index` with biblionumber and suppression_value columns
+- **Nightly Updates**: Automatically refreshes data via `cronjob_nightly`
+- **Fast Report Queries**: Join to the indexed table instead of using ExtractValue in WHERE clauses
+- **Automated Releases**: GitHub Actions workflow for testing and releasing
+- **Version Management**: Automated versioning and KPZ file creation
+- **Multi-Version Support**: Tested against Koha main, stable, and oldstable branches
 
 ## Prerequisites
 
 - Node.js and npm (for local development and version management)
 
-## Setup
+## Installation
+
+### In Koha
+
+1. Download the latest `.kpz` file from the [Releases](../../releases) page
+2. In Koha, go to **Administration** > **Manage plugins**
+3. Click **Upload plugin** and select the downloaded `.kpz` file
+4. Enable the plugin
+
+The plugin will automatically:
+- Create the `plugin_suppression_index` table
+- Begin populating it during the next nightly cronjob run
+
+### For Development
 
 1. Clone this repository
-2. Update the plugin metadata in your .pm file:
-   ```perl
-   our $metadata = {
-       name            => 'Your Plugin Name',
-       author          => 'Your Name',
-       description     => 'Description of your plugin',
-       date_authored   => 'YYYY-MM-DD',
-       date_updated    => 'YYYY-MM-DD',
-       minimum_version => $MINIMUM_VERSION,
-       maximum_version => undef,
-       version         => $VERSION,
-   };
-   ```
-3. Update the `package.json` file with your plugin's information:
-   ```json
-   {
-       "plugin": {
-           "module": "Koha::Plugin::Com::YourOrg::YourPlugin",
-           "pm_path": "Koha/Plugin/Com/YourOrg/YourPlugin.pm"
-       },
-       "version": "1.0.0",
-       "previous_version": "0.0.0"
-   }
-   ```
-4. Install dependencies:
+2. Install Node.js dependencies:
    ```bash
    npm install
    ```
 
-## Usage
+## Using the Plugin
+
+### In SQL Reports
+
+After the nightly cronjob has run, you can join to the indexed table in your reports:
+
+```sql
+SELECT
+    b.biblionumber,
+    b.title,
+    b.author,
+    s.suppression_value
+FROM biblio b
+LEFT JOIN plugin_suppression_index s USING (biblionumber)
+WHERE s.suppression_value = 'your_value'
+```
+
+This is much faster than:
+```sql
+-- Slow: ExtractValue in WHERE clause
+WHERE ExtractValue(metadata, '//datafield[@tag="942"]/subfield[@code="n"]') = 'your_value'
+```
+
+### Manual Index Refresh
+
+The index updates automatically each night. To manually trigger an update, run the plugin's cronjob method from the Koha plugin interface.
+
+## Development
 
 ### Version Management
 
-The template includes a version management system that automatically increments versions. To update the version:
+To update the plugin version:
 
 ```bash
 # For a patch version bump (1.0.0 -> 1.0.1)
@@ -64,9 +81,9 @@ npm run version:major
 ```
 
 This will:
-1. Increment the version number
-2. Update both version and previous_version in package.json
-3. Update the version in your plugin's .pm file
+1. Increment the version number in `package.json`
+2. Update the version in `Koha/Plugin/Com/OpenFifth/Suppression.pm`
+3. Update the `date_updated` field
 
 ### Creating Releases
 
@@ -90,9 +107,9 @@ This will:
 4. Push to GitHub
 
 The GitHub Actions workflow will then:
-1. Run tests against multiple Koha versions
-2. Create a KPZ file for your plugin
-3. Create a GitHub release with the KPZ file and CHANGELOG.md
+1. Run tests against Koha main, stable, and oldstable
+2. Create a KPZ file
+3. Create a GitHub release with the KPZ file
 
 ### Testing
 
@@ -103,15 +120,28 @@ The workflow runs tests against three Koha versions:
 
 Tests are run using koha-testing-docker in the GitHub Actions environment.
 
+## Database Schema
+
+The plugin creates the following table:
+
+```sql
+CREATE TABLE plugin_suppression_index (
+    biblionumber INT(11) NOT NULL,
+    suppression_value VARCHAR(255) DEFAULT NULL,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (biblionumber),
+    INDEX idx_suppression_value (suppression_value)
+)
+```
+
 ## Customization
 
-You can customize the workflow by:
+To index a different MARC field, modify the SQL query in the `cronjob_nightly()` method in `Koha/Plugin/Com/OpenFifth/Suppression.pm`:
 
-1. Modifying the test matrix in `.github/workflows/main.yml`
-2. Adding additional test steps
-3. Customizing the release process
-4. Modifying the version increment logic in `increment_version.js`
+```perl
+ExtractValue(metadata, '//datafield[@tag="XXX"]/subfield[@code="Y"]')
+```
 
 ## License
 
-This template is licensed under the GPL-3.0 license.
+GPL-3.0

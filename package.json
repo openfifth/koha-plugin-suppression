@@ -1,7 +1,7 @@
 {
   "plugin": {
-    "module": "Koha::Plugin::Com::Organisation::PluginName",
-    "pm_path": "Koha/Plugin/Com/Organisation/PluginName.pm"
+    "module": "Koha::Plugin::Com::OpenFifth::Suppression",
+    "pm_path": "Koha/Plugin/Com/OpenFifth/Suppression.pm"
   },
   "version": "0.0.0",
   "previous_version": "0.0.0",
