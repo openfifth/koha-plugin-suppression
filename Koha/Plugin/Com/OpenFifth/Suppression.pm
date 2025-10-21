@@ -8,7 +8,7 @@ use C4::Context;
 use Koha::DateUtils;
 use Koha::Biblios;
 
-our $VERSION         = '1.0.0';
+our $VERSION         = '1.0.1';
 our $MINIMUM_VERSION = "22.05.00.000";
 
 our $metadata = {
