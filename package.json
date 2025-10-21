@@ -3,7 +3,7 @@
     "module": "Koha::Plugin::Com::OpenFifth::Suppression",
     "pm_path": "Koha/Plugin/Com/OpenFifth/Suppression.pm"
   },
-  "version": "0.0.0",
+  "version": "1.0.0",
   "previous_version": "0.0.0",
   "scripts": {
     "version:patch": "node increment_version.js patch | cat",
