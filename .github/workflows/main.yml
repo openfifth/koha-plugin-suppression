@@ -64,9 +64,38 @@ jobs:
         run: |
           docker compose -f docker-compose.yml -p koha up --detach
           cd ..
+
+          # Wait for container to be ready
+          echo "Waiting for containers to start..."
+          sleep 30
+
+          # Check if koha container is running
+          if ! docker ps | grep -q koha-koha-1; then
+            echo "ERROR: koha-koha-1 container is not running!"
+            docker ps -a
+            docker logs koha-koha-1 || true
+            exit 1
+          fi
+
+          # Install test dependencies
           docker exec koha-koha-1 bash -c 'apt-get update && apt-get install -y cpanminus && cpanm JSON::MaybeXS Path::Tiny Test::Exception'
+
+          # Wait for Koha to fully initialize
+          echo "Waiting for Koha to initialize (180 seconds)..."
           sleep 180
+
+          # Verify container is still running after sleep
+          if ! docker ps | grep -q koha-koha-1; then
+            echo "ERROR: koha-koha-1 container stopped during initialization!"
+            docker ps -a
+            docker logs koha-koha-1 || true
+            exit 1
+          fi
+
+          # Copy plugin files
           docker cp $GITHUB_REPO/. koha-koha-1:/var/lib/koha/kohadev/plugins
+
+          # Run tests
           docker exec koha-koha-1 bash -c 'export KOHA_PLUGIN_DIR=/var/lib/koha/kohadev/plugins && prove /var/lib/koha/kohadev/plugins/t'
 
       - name: Post test cleanup
