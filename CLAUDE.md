@@ -24,8 +24,16 @@ This is the Suppression Indexer plugin for Koha, which creates a searchable inde
 - `last_updated` (TIMESTAMP) - Last time the record was updated
 - Created during `install()`, dropped during `uninstall()`
 
+**Real-time Updates**
+- Method: `after_biblio_action()` - Hook triggered after biblio create/modify/delete operations
+- Parameters: `action` ('create', 'modify', 'delete'), `biblio_id` (biblionumber)
+- Updates single record immediately when biblios change
+- Deletes index entry when biblio is deleted
+- Available since Koha 19.11 (Bug 22709)
+
 **Nightly Cronjob**
 - Method: `cronjob_nightly()` - Called automatically by Koha's cronjob system
+- Bulk updates all biblios for initial population and catching missed records
 - Executes SQL using `ExtractValue()` to extract MARC 942$n from biblio_metadata
 - Uses `REPLACE INTO` to handle both new records and updates
 - Only processes MARC21 records from biblio_metadata table
@@ -161,15 +169,27 @@ Tests run against three Koha versions:
   WHERE s.suppression_value = 'desired_value'
   ```
 
+**Real-time vs Nightly Updates:**
+- **Real-time**: The `after_biblio_action` hook updates index immediately when biblios change
+- **Nightly**: The `cronjob_nightly` performs bulk updates of all records
+- Both methods serve different purposes and work together
+- Real-time ensures current data; nightly catches any missed updates
+
 **MARC Field Extraction:**
 - Currently hardcoded to extract MARC21 942$n
 - Uses MySQL's `ExtractValue()` function on XML metadata
-- To support other MARC formats, modify the SQL in `cronjob_nightly()`
+- To support other MARC formats, modify the SQL in both `after_biblio_action()` and `cronjob_nightly()`
 
 **Performance Considerations:**
-- The nightly cronjob processes all biblio records
-- For large databases (>1M records), consider batching the REPLACE INTO
+- Real-time updates process single records with minimal performance impact
+- The nightly cronjob processes all biblio records for bulk sync
+- For large databases (>1M records), consider batching in `cronjob_nightly()`
 - The indexed `suppression_value` field enables fast WHERE clause filtering
+
+**Available Hooks:**
+- `after_biblio_action` - Real-time updates when biblios change (implemented)
+- `after_item_action` - Could be added for item-level changes if needed
+- `before_biblio_action` - Pre-modification hook (Koha 24.05+)
 
 ### When writing tests:
 

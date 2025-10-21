@@ -72,11 +72,51 @@ sub uninstall {
     return 1;
 }
 
+sub after_biblio_action {
+    my ( $self, $params ) = @_;
+
+    my $action      = $params->{action};      # 'create', 'modify', or 'delete'
+    my $biblionumber = $params->{biblio_id};
+
+    return unless $biblionumber;
+
+    my $dbh = C4::Context->dbh;
+
+    if ( $action eq 'delete' ) {
+        # Remove from index when biblio is deleted
+        $dbh->do(
+            q{DELETE FROM plugin_suppression_index WHERE biblionumber = ?},
+            undef,
+            $biblionumber
+        );
+    } else {
+        # Update index for create/modify actions
+        # Use REPLACE to handle both inserts and updates
+        my $sql = q{
+            REPLACE INTO plugin_suppression_index (biblionumber, suppression_value, last_updated)
+            SELECT
+                biblio_metadata.biblionumber,
+                ExtractValue(metadata, '//datafield[@tag="942"]/subfield[@code="n"]') AS suppression_value,
+                NOW()
+            FROM biblio_metadata
+            WHERE biblio_metadata.biblionumber = ?
+            AND biblio_metadata.format = 'marcxml'
+            AND biblio_metadata.schema = 'MARC21'
+        };
+
+        $dbh->do( $sql, undef, $biblionumber );
+    }
+
+    return 1;
+}
+
 sub cronjob_nightly {
     my ( $self, $args ) = @_;
 
     my $dbh = C4::Context->dbh;
 
+    # Bulk update for all biblios - useful for initial population
+    # and catching any records that may have been missed
     # Use REPLACE to handle both inserts and updates
     # ExtractValue extracts the MARC 942$n value from the metadata XML
     my $sql = q{

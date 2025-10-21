@@ -5,7 +5,8 @@ This plugin creates an indexed database table for MARC 942$n suppression values,
 ## Features
 
 - **Indexed Suppression Table**: Creates `plugin_suppression_index` with biblionumber and suppression_value columns
-- **Nightly Updates**: Automatically refreshes data via `cronjob_nightly`
+- **Real-time Updates**: Uses `after_biblio_action` hook to update index immediately when biblios change
+- **Nightly Sync**: Bulk updates all records via `cronjob_nightly` to catch any missed changes
 - **Fast Report Queries**: Join to the indexed table instead of using ExtractValue in WHERE clauses
 - **Automated Releases**: GitHub Actions workflow for testing and releasing
 - **Version Management**: Automated versioning and KPZ file creation
@@ -26,7 +27,8 @@ This plugin creates an indexed database table for MARC 942$n suppression values,
 
 The plugin will automatically:
 - Create the `plugin_suppression_index` table
-- Begin populating it during the next nightly cronjob run
+- Update the index in real-time when biblios are created, modified, or deleted
+- Perform bulk sync during nightly cronjob runs
 
 ### For Development
 
@@ -59,9 +61,14 @@ This is much faster than:
 WHERE ExtractValue(metadata, '//datafield[@tag="942"]/subfield[@code="n"]') = 'your_value'
 ```
 
-### Manual Index Refresh
+### Index Updates
 
-The index updates automatically each night. To manually trigger an update, run the plugin's cronjob method from the Koha plugin interface.
+The index updates automatically in two ways:
+
+1. **Real-time**: Immediately when biblios are created, modified, or deleted (via `after_biblio_action` hook)
+2. **Nightly**: Bulk sync of all records via cronjob (catches any missed updates)
+
+To manually trigger a full sync, run the plugin's cronjob method from the Koha plugin interface.
 
 ## Development
 
@@ -136,11 +143,13 @@ CREATE TABLE plugin_suppression_index (
 
 ## Customization
 
-To index a different MARC field, modify the SQL query in the `cronjob_nightly()` method in `Koha/Plugin/Com/OpenFifth/Suppression.pm`:
+To index a different MARC field, modify the SQL query in **both** the `after_biblio_action()` and `cronjob_nightly()` methods in `Koha/Plugin/Com/OpenFifth/Suppression.pm`:
 
 ```perl
 ExtractValue(metadata, '//datafield[@tag="XXX"]/subfield[@code="Y"]')
 ```
+
+**Note:** Both methods must use the same extraction logic to ensure consistency between real-time and bulk updates.
 
 ## License
 
