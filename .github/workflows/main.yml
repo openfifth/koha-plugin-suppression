@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        koha-version: [main, stable]
+        koha-version: [main, stable, oldstable]
 
     steps:
       - uses: actions/checkout@v4
@@ -49,9 +49,17 @@ jobs:
           echo "KOHA_INTRANET_URL=$KOHA_INTRANET_URL" >> $GITHUB_ENV
           echo "KOHA_MARC_FLAVOUR=$KOHA_MARC_FLAVOUR" >> $GITHUB_ENV
           echo "RUN_TESTS_AND_EXIT=no" >> $GITHUB_ENV
-          echo "KOHA_IMAGE=main" >> $GITHUB_ENV
           # Disable memory-intensive services not needed for plugin tests
           echo "KOHA_ELASTICSEARCH=no" >> $GITHUB_ENV
+
+      - name: Set KOHA_IMAGE to match tested branch
+        run: |
+          # Use version-major-minor but handle main branch case
+          if [ "${{ matrix.koha-version }}" = "main" ]; then
+            echo "KOHA_IMAGE=main" >> $GITHUB_ENV
+          else
+            echo "KOHA_IMAGE=${{ steps.koha-version.outputs.version-major-minor }}" >> $GITHUB_ENV
+          fi
 
       - name: Set up koha-testing-docker
         run: |
@@ -133,10 +141,10 @@ jobs:
         run: npm ci
 
       - name: Get Koha Version Branch Name
-        id: koha-version-stable
+        id: koha-version-oldstable
         uses: "bywatersolutions/github-action-koha-get-version-by-label@master"
         with:
-          version-label: "stable"
+          version-label: "oldstable"
 
       - name: Read package.json
         id: package
@@ -149,7 +157,7 @@ jobs:
         with:
           release-version: ${{ github.ref_name }}
           release-name: ${{ github.event.repository.name }}
-          minimum-version: ${{ steps.koha-version-stable.outputs.version-major-minor }}
+          minimum-version: ${{ steps.koha-version-oldstable.outputs.version-major-minor }}
           plugin-module: ${{ steps.package.outputs.plugin_path }}
 
       - name: Create Release

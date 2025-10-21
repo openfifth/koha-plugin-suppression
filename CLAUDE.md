@@ -111,9 +111,10 @@ Tests read `package.json` to validate plugin version consistency.
 - Weekly cron job (Mondays at 6 AM UTC)
 
 **Test Matrix:**
-Tests run against two Koha versions:
+Tests run against three Koha versions:
 - `main` - Development branch
 - `stable` - Current stable release
+- `oldstable` - Previous stable release
 
 **Test Process:**
 1. Checkout plugin code
@@ -136,7 +137,8 @@ Tests run against two Koha versions:
 - Tests install dependencies: `JSON::MaybeXS`, `Path::Tiny`, `Test::Exception`
 - 180-second sleep after container startup to ensure Koha is ready
 - Environment variable `KOHA_PLUGIN_DIR` points to plugin location
-- KPZ minimum version set to stable major.minor version
+- `KOHA_IMAGE` set dynamically to match tested branch (main/version-major-minor)
+- KPZ minimum version set to oldstable major.minor version
 - Elasticsearch and Selenium disabled to reduce memory usage in CI
 
 ## Development Notes
